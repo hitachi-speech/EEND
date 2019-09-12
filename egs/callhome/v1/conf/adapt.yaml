@@ -1,0 +1,25 @@
+# adapt options
+sampling_rate: 8000
+frame_size: 200
+frame_shift: 80
+model_type: Transformer
+patience: 100
+max_epochs: 100
+gradclip: 5
+batchsize: 64
+hidden_size: 256
+num_frames: 500
+num_speakers: 2
+input_transform: logmel23_mn
+optimizer: adam
+lr: 1e-5
+context_size: 7
+subsampling: 10
+noam_scale: 1.0
+gradient_accumulation_steps: 1
+transformer_encoder_n_heads: 4
+transformer_encoder_n_layers: 2
+transformer_encoder_dropout: 0.1
+noam_warmup_steps: 25000
+seed: 777
+gpu: 0

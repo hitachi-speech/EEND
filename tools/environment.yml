@@ -1,0 +1,17 @@
+name: eend
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - pip
+  - pip:
+    - h5py
+    - librosa
+    - numpy
+    - protobuf
+    - scipy
+    - tqdm
+    - SoundFile
+    - matplotlib
+    - kaldiio
+    - yamlargparse
