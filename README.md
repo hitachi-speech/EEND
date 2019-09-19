@@ -1,6 +1,8 @@
 # EEND (End-to-End Neural Diarization)
 
 EEND (End-to-End Neural Diarization) is a neural-network-based speaker diarization method.
+- https://www.isca-speech.org/archive/Interspeech_2019/abstracts/2899.html
+- https://arxiv.org/abs/1909.06247 (to appear at ASRU 2019)
 
 ## Install tools
 ### Requirements
@@ -70,12 +72,22 @@ cd egs/callhome/v1
 ```bash
 local/run_blstm.sh
 ```
+
+## References
+[1] Yusuke Fujita, Naoyuki Kanda, Shota Horiguchi, Kenji Nagamatsu, Shinji Watanabe, "
+End-to-End Neural Speaker Diarization with Permutation-free Objectives," Proc. Interspeech, pp. 4300-4304, 2019
+
+[2] Yusuke Fujita, Naoyuki Kanda, Shota Horiguchi, Yawen Xue, Kenji Nagamatsu, Shinji Watanabe, "
+End-to-End Neural Speaker Diarization with Self-attention," arXiv preprints arXiv:1909.06247, 2019
+
+
 ## Citation
 ```
 @inproceedings{Fujita2019Interspeech,
  author={Yusuke Fujita and Naoyuki Kanda and Shota Horiguchi and Kenji Nagamatsu and Shinji Watanabe},
- title={End-to-end Neural Speaker Diarization with Permutation-free Objectives},
+ title={{End-to-End Neural Speaker Diarization with Permutation-free Objectives}},
  booktitle={Interspeech},
+ pages={4300--4304}
  year=2019
 }
 ```

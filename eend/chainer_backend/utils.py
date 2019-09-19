@@ -23,6 +23,8 @@ def get_free_gpus():
     stdout, stderr = p.communicate()
     gpus = {}
     for line in stdout.decode('utf-8').strip().split(os.linesep):
+        if not line:
+            continue
         idx, busid = line.strip().split(',')
         gpus[busid] = int(idx)
     p = subprocess.Popen(
@@ -32,6 +34,8 @@ def get_free_gpus():
             stdout=subprocess.PIPE)
     stdout, stderr = p.communicate()
     for line in stdout.decode('utf-8').strip().split(os.linesep):
+        if not line:
+            continue
         pid, busid = line.strip().split(',')
         del gpus[busid]
     return sorted([gpus[busid] for busid in gpus])

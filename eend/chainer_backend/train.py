@@ -6,12 +6,10 @@
 import os
 import numpy as np
 import chainer
-from chainer import cuda
 from chainer import optimizers
 from chainer import serializers
 from chainer import iterators
 from chainer import training
-from chainer import Variable
 from chainer.training import extensions
 from eend.chainer_backend.models import BLSTMDiarization
 from eend.chainer_backend.models import TransformerDiarization
@@ -21,24 +19,20 @@ from eend.chainer_backend.diarization_dataset import KaldiDiarizationDataset
 from eend.chainer_backend.utils import use_single_gpu
 
 
+@chainer.dataset.converter()
 def _convert(batch, device):
     def to_device_batch(batch):
-        if batch is None:
-            return None
         if device is None:
-            return [Variable(x) for x in batch]
-        elif device < 0:
-            return [Variable(
-                chainer.dataset.to_device(device, x)) for x in batch]
-        else:
-            xp = cuda.cupy.get_array_module(*batch)
-            concat = xp.concatenate(batch, axis=0)
-            sections = np.cumsum([len(x) for x in batch[:-1]], dtype=np.int32)
-            concat_dev = chainer.dataset.to_device(device, concat)
-            batch_dev = cuda.cupy.split(concat_dev, sections)
-            batch_dev = [Variable(x) for x in batch_dev]
-            return batch_dev
-    return {'xs': to_device_batch([y for y, _ in batch]),
+            return batch
+        src_xp = chainer.backend.get_array_module(*batch)
+        xp = device.xp
+        concat = src_xp.concatenate(batch, axis=0)
+        sections = list(np.cumsum(
+            [len(x) for x in batch[:-1]], dtype=np.int32))
+        concat_dst = device.send(concat)
+        batch_dst = xp.split(concat_dst, sections)
+        return batch_dst
+    return {'xs': to_device_batch([x for x, _ in batch]),
             'ts': to_device_batch([t for _, t in batch])}
 
 

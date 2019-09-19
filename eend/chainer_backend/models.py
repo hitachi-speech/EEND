@@ -74,8 +74,8 @@ def calc_diarization_error(pred, label, label_delay=0):
     Calculates diarization error stats for reporting.
 
     Args:
-      pred: (T,C)-shaped pre-activation values
-      label: (T,C)-shaped labels in {0,1}
+      pred (ndarray): (T,C)-shaped pre-activation values
+      label (ndarray): (T,C)-shaped labels in {0,1}
       label_delay: if label_delay == 5:
            pred: 0 1 2 3 4 | 5 6 ... 99 100 |
           label: x x x x x | 0 1 ... 94  95 | 96 97 98 99 100
@@ -84,9 +84,9 @@ def calc_diarization_error(pred, label, label_delay=0):
     Returns:
       res: dict of diarization error stats
     """
-    xp = cuda.get_array_module(pred)
-    label = label[:len(label) - label_delay, ...].data
-    decisions = F.sigmoid(pred[label_delay:, ...]).data > 0.5
+    xp = chainer.backend.get_array_module(pred)
+    label = label[:len(label) - label_delay, ...]
+    decisions = F.sigmoid(pred[label_delay:, ...]).array > 0.5
     n_ref = xp.sum(label, axis=-1)
     n_sys = xp.sum(decisions, axis=-1)
     res = {}
@@ -114,12 +114,12 @@ def report_diarization_error(ys, labels, observer):
     Reports diarization errors using chainer.reporter
 
     Args:
-      ys: B-length list of predictions
-      labels: B-length list of labels
+      ys: B-length list of predictions (Variable)
+      labels: B-length list of labels (ndarray)
       observer: target link (chainer.Chain)
     """
     for y, t in zip(ys, labels):
-        stats = calc_diarization_error(y, t)
+        stats = calc_diarization_error(y.array, t)
         for key in stats:
             reporter.report({key: stats[key]}, observer)
 
