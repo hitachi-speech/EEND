@@ -1,10 +1,10 @@
 # Modify this file according to a job scheduling system in your cluster.
 # For more information about cmd.sh see http://kaldi-asr.org/doc/queue.html.
 #
-# If you use your local machine, use "run.sh".
-# export train_cmd="run.sh"
-# export infer_cmd="run.sh"
-# export simu_cmd="run.sh"
+# If you use your local machine, use "run.pl".
+# export train_cmd="run.pl"
+# export infer_cmd="run.pl"
+# export simu_cmd="run.pl"
 
 # If you use Grid Engine, use "queue.pl"
 export train_cmd="queue.pl --mem 32G -l 'hostname=c*'"

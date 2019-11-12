@@ -119,7 +119,7 @@ if [ $stage -le 0 ]; then
         fi
         unzip sim_rir_8k.zip -d data/sim_rir_8k
         find $PWD/data/sim_rir_8k -iname "*.wav" \
-            | awk '{split($1,A,/[\/\.]/); print A[length(A)-3]"_"A[length(A)-1], $1}' \
+            | awk '{n=split($1,A,/[\/\.]/); print A[n-3]"_"A[n-1], $1}' \
             | sort > data/simu_rirs_8k/wav.scp
         awk '{print $1, $1}' data/simu_rirs_8k/wav.scp > data/simu_rirs_8k/utt2spk
         utils/fix_data_dir.sh data/simu_rirs_8k
