@@ -5,17 +5,17 @@
 
 import numpy as np
 import librosa
-import scipy.signal
+
 
 def get_input_dim(
         frame_size,
         context_size,
         transform_type,
-        ):
+):
     if transform_type.startswith('logmel23'):
         frame_size = 23
     else:
-        fft_size = 1 << (frame_size-1).bit_length()
+        fft_size = 1 << (frame_size - 1).bit_length()
         frame_size = int(fft_size / 2) + 1
     input_dim = (2 * context_size + 1) * frame_size
     return input_dim
@@ -72,15 +72,15 @@ def transform(
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)
         Y = np.log10(np.maximum(Y, 1e-10))
-        #b = np.ones(300)/300
-        #mean = scipy.signal.convolve2d(Y, b[:, None], mode='same')
-        #
-        # simple 2-means based threshoding for mean calculation
+        # b = np.ones(300)/300
+        # mean = scipy.signal.convolve2d(Y, b[:, None], mode='same')
+
+        #  simple 2-means based threshoding for mean calculation
         powers = np.sum(Y, axis=1)
-        th = (np.max(powers) + np.min(powers))/2.0
+        th = (np.max(powers) + np.min(powers)) / 2.0
         for i in range(10):
             th = (np.mean(powers[powers >= th]) + np.mean(powers[powers < th])) / 2
-        mean = np.mean(Y[powers > th,:], axis=0)
+        mean = np.mean(Y[powers > th, :], axis=0)
         Y = Y - mean
     elif transform_type == 'logmel23_mvn':
         n_fft = 2 * (Y.shape[1] - 1)
@@ -121,13 +121,13 @@ def splice(Y, context_size=0):
             (n_frames, n_featdim * (2 * context_size + 1))-shaped
     """
     Y_pad = np.pad(
-            Y,
-            [(context_size, context_size), (0, 0)],
-            'constant')
+        Y,
+        [(context_size, context_size), (0, 0)],
+        'constant')
     Y_spliced = np.lib.stride_tricks.as_strided(
-            Y_pad,
-            (Y.shape[0], Y.shape[1] * (2 * context_size + 1)),
-            (Y.itemsize * Y.shape[1], Y.itemsize), writeable=False)
+        np.ascontiguousarray(Y_pad),
+        (Y.shape[0], Y.shape[1] * (2 * context_size + 1)),
+        (Y.itemsize * Y.shape[1], Y.itemsize), writeable=False)
     return Y_spliced
 
 
@@ -148,7 +148,7 @@ def stft(
             (n_frames, n_bins)-shaped np.complex64 array
     """
     # round up to nearest power of 2
-    fft_size = 1 << (frame_size-1).bit_length()
+    fft_size = 1 << (frame_size - 1).bit_length()
     # HACK: The last frame is ommited
     #       as librosa.stft produces such an excessive frame
     if len(data) % frame_shift == 0:
@@ -192,13 +192,12 @@ def get_frame_labels(
     """
     filtered_segments = kaldi_obj.segments[kaldi_obj.segments['rec'] == rec]
     speakers = np.unique(
-            [kaldi_obj.utt2spk[seg['utt']] for seg
-                in filtered_segments]).tolist()
+        [kaldi_obj.utt2spk[seg['utt']] for seg
+         in filtered_segments]).tolist()
     if n_speakers is None:
         n_speakers = len(speakers)
     es = end * frame_shift if end is not None else None
-    data, rate = kaldi_obj.load_wav(
-            rec, start * frame_shift, es)
+    data, rate = kaldi_obj.load_wav(rec, start * frame_shift, es)
     n_frames = _count_frames(len(data), frame_size, frame_shift)
     T = np.zeros((n_frames, n_speakers), dtype=np.int32)
     if end is None:
@@ -207,9 +206,9 @@ def get_frame_labels(
     for seg in filtered_segments:
         speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
         start_frame = np.rint(
-                seg['st'] * rate / frame_shift).astype(int)
+            seg['st'] * rate / frame_shift).astype(int)
         end_frame = np.rint(
-                seg['et'] * rate / frame_shift).astype(int)
+            seg['et'] * rate / frame_shift).astype(int)
         rel_start = rel_end = None
         if start <= start_frame and start_frame < end:
             rel_start = start_frame - start
@@ -246,13 +245,13 @@ def get_labeledSTFT(
             (n_frmaes, n_speakers)-shaped np.int32 array.
     """
     data, rate = kaldi_obj.load_wav(
-            rec, start * frame_shift, end * frame_shift)
+        rec, start * frame_shift, end * frame_shift)
     Y = stft(data, frame_size, frame_shift)
     filtered_segments = kaldi_obj.segments[rec]
     # filtered_segments = kaldi_obj.segments[kaldi_obj.segments['rec'] == rec]
     speakers = np.unique(
-            [kaldi_obj.utt2spk[seg['utt']] for seg
-                in filtered_segments]).tolist()
+        [kaldi_obj.utt2spk[seg['utt']] for seg
+         in filtered_segments]).tolist()
     if n_speakers is None:
         n_speakers = len(speakers)
     T = np.zeros((Y.shape[0], n_speakers), dtype=np.int32)
@@ -266,9 +265,9 @@ def get_labeledSTFT(
         if use_speaker_id:
             all_speaker_index = all_speakers.index(kaldi_obj.utt2spk[seg['utt']])
         start_frame = np.rint(
-                seg['st'] * rate / frame_shift).astype(int)
+            seg['st'] * rate / frame_shift).astype(int)
         end_frame = np.rint(
-                seg['et'] * rate / frame_shift).astype(int)
+            seg['et'] * rate / frame_shift).astype(int)
         rel_start = rel_end = None
         if start <= start_frame and start_frame < end:
             rel_start = start_frame - start

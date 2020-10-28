@@ -34,7 +34,7 @@ parser.add_argument('--input-transform', default='',
                     help='input transform')
 parser.add_argument('--lr', default=0.001, type=float)
 parser.add_argument('--optimizer', default='adam', type=str)
-parser.add_argument('--num-speakers', default=2, type=int)
+parser.add_argument('--num-speakers', type=int)
 parser.add_argument('--gradclip', default=-1, type=int,
                     help='gradient clipping. if < 0, no clipping')
 parser.add_argument('--num-frames', default=2000, type=int,
@@ -63,6 +63,16 @@ parser.add_argument('--transformer-encoder-n-layers', default=2, type=int)
 parser.add_argument('--transformer-encoder-dropout', default=0.1, type=float)
 parser.add_argument('--gradient-accumulation-steps', default=1, type=int)
 parser.add_argument('--seed', default=777, type=int)
+
+attractor_args = parser.add_argument_group('attractor')
+attractor_args.add_argument('--use-attractor', action='store_true',
+                            help='Enable encoder-decoder attractor mode')
+attractor_args.add_argument('--shuffle', action='store_true',
+                            help='Shuffle the order in time-axis before input to the network')
+attractor_args.add_argument('--attractor-loss-ratio', default=1.0, type=float,
+                            help='weighting parameter')
+attractor_args.add_argument('--attractor-encoder-dropout', default=0.1, type=float)
+attractor_args.add_argument('--attractor-decoder-dropout', default=0.1, type=float)
 args = parser.parse_args()
 
 system_info.print_system_info()

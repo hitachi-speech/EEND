@@ -12,7 +12,7 @@ from chainer import iterators
 from chainer import training
 from chainer.training import extensions
 from eend.chainer_backend.models import BLSTMDiarization
-from eend.chainer_backend.models import TransformerDiarization
+from eend.chainer_backend.models import TransformerDiarization, TransformerEDADiarization
 from eend.chainer_backend.transformer import NoamScheduler
 from eend.chainer_backend.updater import GradientAccumulationUpdater
 from eend.chainer_backend.diarization_dataset import KaldiDiarizationDataset
@@ -24,13 +24,7 @@ def _convert(batch, device):
     def to_device_batch(batch):
         if device is None:
             return batch
-        src_xp = chainer.backend.get_array_module(*batch)
-        xp = device.xp
-        concat = src_xp.concatenate(batch, axis=0)
-        sections = list(np.cumsum(
-            [len(x) for x in batch[:-1]], dtype=np.int32))
-        concat_dst = device.send(concat)
-        batch_dst = xp.split(concat_dst, sections)
+        batch_dst = [device.send(x) for x in batch]
         return batch_dst
     return {'xs': to_device_batch([x for x, _ in batch]),
             'ts': to_device_batch([t for _, t in batch])}
@@ -57,7 +51,8 @@ def train(args):
         use_last_samples=True,
         label_delay=args.label_delay,
         n_speakers=args.num_speakers,
-        )
+        shuffle=args.shuffle,
+    )
     dev_set = KaldiDiarizationDataset(
         args.valid_data_dir,
         chunk_size=args.num_frames,
@@ -70,29 +65,45 @@ def train(args):
         use_last_samples=True,
         label_delay=args.label_delay,
         n_speakers=args.num_speakers,
-        )
+        shuffle=args.shuffle,
+    )
 
     # Prepare model
     Y, T = train_set.get_example(0)
 
     if args.model_type == 'BLSTM':
+        assert args.num_speakers is not None
         model = BLSTMDiarization(
-                in_size=Y.shape[1],
-                n_speakers=args.num_speakers,
-                hidden_size=args.hidden_size,
-                n_layers=args.num_lstm_layers,
-                embedding_layers=args.embedding_layers,
-                embedding_size=args.embedding_size,
-                dc_loss_ratio=args.dc_loss_ratio,
-                )
+            in_size=Y.shape[1],
+            n_speakers=args.num_speakers,
+            hidden_size=args.hidden_size,
+            n_layers=args.num_lstm_layers,
+            embedding_layers=args.embedding_layers,
+            embedding_size=args.embedding_size,
+            dc_loss_ratio=args.dc_loss_ratio,
+        )
     elif args.model_type == 'Transformer':
-        model = TransformerDiarization(
+        if args.use_attractor:
+            model = TransformerEDADiarization(
+                Y.shape[1],
+                n_units=args.hidden_size,
+                n_heads=args.transformer_encoder_n_heads,
+                n_layers=args.transformer_encoder_n_layers,
+                dropout=args.transformer_encoder_dropout,
+                attractor_loss_ratio=args.attractor_loss_ratio,
+                attractor_encoder_dropout=args.attractor_encoder_dropout,
+                attractor_decoder_dropout=args.attractor_decoder_dropout,
+            )
+        else:
+            assert args.num_speakers is not None
+            model = TransformerDiarization(
                 args.num_speakers,
                 Y.shape[1],
                 n_units=args.hidden_size,
                 n_heads=args.transformer_encoder_n_heads,
                 n_layers=args.transformer_encoder_n_layers,
-                dropout=args.transformer_encoder_dropout)
+                dropout=args.transformer_encoder_dropout
+            )
     else:
         raise ValueError('Possible model_type are "Transformer" and "BLSTM"')
 
@@ -125,20 +136,20 @@ def train(args):
         serializers.load_npz(args.initmodel, model)
 
     train_iter = iterators.MultiprocessIterator(
-            train_set,
-            batch_size=args.batchsize,
-            repeat=True, shuffle=True,
-            # shared_mem=64000000,
-            shared_mem=None,
-            n_processes=4, n_prefetch=2)
+        train_set,
+        batch_size=args.batchsize,
+        repeat=True, shuffle=True,
+        # shared_mem=64000000,
+        shared_mem=None,
+        n_processes=4, n_prefetch=2)
 
     dev_iter = iterators.MultiprocessIterator(
-            dev_set,
-            batch_size=args.batchsize,
-            repeat=False, shuffle=False,
-            # shared_mem=64000000,
-            shared_mem=None,
-            n_processes=4, n_prefetch=2)
+        dev_set,
+        batch_size=args.batchsize,
+        repeat=False, shuffle=False,
+        # shared_mem=64000000,
+        shared_mem=None,
+        n_processes=4, n_prefetch=2)
 
     if args.gradient_accumulation_steps > 1:
         updater = GradientAccumulationUpdater(
@@ -148,12 +159,12 @@ def train(args):
             train_iter, optimizer, converter=_convert, device=gpuid)
 
     trainer = training.Trainer(
-            updater,
-            (args.max_epochs, 'epoch'),
-            out=os.path.join(args.model_save_dir))
+        updater,
+        (args.max_epochs, 'epoch'),
+        out=os.path.join(args.model_save_dir))
 
     evaluator = extensions.Evaluator(
-            dev_iter, model, converter=_convert, device=gpuid)
+        dev_iter, model, converter=_convert, device=gpuid)
     trainer.extend(evaluator)
 
     if args.optimizer == 'noam':
@@ -168,13 +179,13 @@ def train(args):
 
     # MICRO AVERAGE
     metrics = [
-            ('diarization_error', 'speaker_scored', 'DER'),
-            ('speech_miss', 'speech_scored', 'SAD_MR'),
-            ('speech_falarm', 'speech_scored', 'SAD_FR'),
-            ('speaker_miss', 'speaker_scored', 'MI'),
-            ('speaker_falarm', 'speaker_scored', 'FA'),
-            ('speaker_error', 'speaker_scored', 'CF'),
-            ('correct', 'frames', 'accuracy')]
+        ('diarization_error', 'speaker_scored', 'DER'),
+        ('speech_miss', 'speech_scored', 'SAD_MR'),
+        ('speech_falarm', 'speech_scored', 'SAD_FR'),
+        ('speaker_miss', 'speaker_scored', 'MI'),
+        ('speaker_falarm', 'speaker_scored', 'FA'),
+        ('speaker_error', 'speaker_scored', 'CF'),
+        ('correct', 'frames', 'accuracy')]
     for num, den, name in metrics:
         trainer.extend(extensions.MicroAverage(
             'main/{}'.format(num),

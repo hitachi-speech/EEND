@@ -11,7 +11,7 @@ from chainer import Variable
 from chainer import serializers
 from scipy.ndimage import shift
 from eend.chainer_backend.models import BLSTMDiarization
-from eend.chainer_backend.models import TransformerDiarization
+from eend.chainer_backend.models import TransformerDiarization, TransformerEDADiarization
 from eend.chainer_backend.utils import use_single_gpu
 from eend import feature
 from eend import kaldi_data
@@ -32,26 +32,39 @@ def infer(args):
 
     # Prepare model
     in_size = feature.get_input_dim(
-            args.frame_size,
-            args.context_size,
-            args.input_transform)
+        args.frame_size,
+        args.context_size,
+        args.input_transform)
 
     if args.model_type == "BLSTM":
         model = BLSTMDiarization(
-                in_size=in_size,
-                n_speakers=args.num_speakers,
-                hidden_size=args.hidden_size,
-                n_layers=args.num_lstm_layers,
-                embedding_layers=args.embedding_layers,
-                embedding_size=args.embedding_size)
+            in_size=in_size,
+            n_speakers=args.num_speakers,
+            hidden_size=args.hidden_size,
+            n_layers=args.num_lstm_layers,
+            embedding_layers=args.embedding_layers,
+            embedding_size=args.embedding_size
+        )
     elif args.model_type == 'Transformer':
-        model = TransformerDiarization(
+        if args.use_attractor:
+            model = TransformerEDADiarization(
+                in_size,
+                n_units=args.hidden_size,
+                n_heads=args.transformer_encoder_n_heads,
+                n_layers=args.transformer_encoder_n_layers,
+                dropout=0,
+                attractor_encoder_dropout=args.attractor_encoder_dropout,
+                attractor_decoder_dropout=args.attractor_decoder_dropout,
+            )
+        else:
+            model = TransformerDiarization(
                 args.num_speakers,
                 in_size,
                 n_units=args.hidden_size,
                 n_heads=args.transformer_encoder_n_heads,
                 n_layers=args.transformer_encoder_n_layers,
-                dropout=0)
+                dropout=0
+            )
     else:
         raise ValueError('Unknown model type.')
 
@@ -75,7 +88,12 @@ def infer(args):
                 Y_chunked = Variable(Y[start:end])
                 if args.gpu >= 0:
                     Y_chunked.to_gpu(gpuid)
-                hs, ys = model.estimate_sequential(hs, [Y_chunked])
+                hs, ys = model.estimate_sequential(
+                    hs, [Y_chunked],
+                    n_speakers=args.num_speakers,
+                    th=args.attractor_threshold,
+                    shuffle=args.shuffle
+                )
                 if args.gpu >= 0:
                     ys[0].to_cpu()
                 out_chunks.append(ys[0].data)
@@ -88,6 +106,8 @@ def infer(args):
         if hasattr(model, 'label_delay'):
             outdata = shift(np.vstack(out_chunks), (-model.label_delay, 0))
         else:
+            max_n_speakers = max([o.shape[1] for o in out_chunks])
+            out_chunks = [np.insert(o, o.shape[1], np.zeros((max_n_speakers - o.shape[1], o.shape[0])), axis=1) for o in out_chunks]
             outdata = np.vstack(out_chunks)
         with h5py.File(outpath, 'w') as wf:
             wf.create_dataset('T_hat', data=outdata)

@@ -26,6 +26,7 @@ def _gen_frame_indices(
 
 
 class KaldiDiarizationDataset(chainer.dataset.DatasetMixin):
+
     def __init__(
             self,
             data_dir,
@@ -40,7 +41,8 @@ class KaldiDiarizationDataset(chainer.dataset.DatasetMixin):
             use_last_samples=False,
             label_delay=0,
             n_speakers=None,
-            ):
+            shuffle=False,
+    ):
         self.data_dir = data_dir
         self.dtype = dtype
         self.chunk_size = chunk_size
@@ -64,8 +66,10 @@ class KaldiDiarizationDataset(chainer.dataset.DatasetMixin):
                     label_delay=self.label_delay,
                     subsampling=self.subsampling):
                 self.chunk_indices.append(
-                        (rec, st * self.subsampling, ed * self.subsampling))
+                    (rec, st * self.subsampling, ed * self.subsampling))
         print(len(self.chunk_indices), " chunks")
+
+        self.shuffle = shuffle
 
     def __len__(self):
         return len(self.chunk_indices)
@@ -83,4 +87,19 @@ class KaldiDiarizationDataset(chainer.dataset.DatasetMixin):
         Y = feature.transform(Y, self.input_transform)
         Y_spliced = feature.splice(Y, self.context_size)
         Y_ss, T_ss = feature.subsample(Y_spliced, T, self.subsampling)
+
+        # If the sample contains more than "self.n_speakers" speakers,
+        #  extract top-(self.n_speakers) speakers
+        if self.n_speakers and T_ss.shape[1] > self.n_speakers:
+            selected_speakers = np.argsort(T_ss.sum(axis=0))[::-1][:self.n_speakers]
+            T_ss = T_ss[:, selected_speakers]
+
+        # If self.shuffle is True, shuffle the order in time-axis
+        # This operation improves the performance of EEND-EDA
+        if self.shuffle:
+            order = np.arange(Y_ss.shape[0])
+            np.random.shuffle(order)
+            Y_ss = Y_ss[order]
+            T_ss = T_ss[order]
+
         return Y_ss, T_ss

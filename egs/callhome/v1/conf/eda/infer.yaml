@@ -1,0 +1,17 @@
+# inference options
+sampling_rate: 8000
+frame_size: 200
+frame_shift: 80
+model_type: Transformer
+hidden_size: 256
+input_transform: logmel23_mn
+context_size: 7
+subsampling: 10
+chunk_size: 200000000
+transformer_encoder_n_heads: 4
+transformer_encoder_n_layers: 4
+use_attractor: True
+shuffle: True
+attractor_encoder_dropout: 0.1
+attractor_decoder_dropout: 0.1
+gpu: 0

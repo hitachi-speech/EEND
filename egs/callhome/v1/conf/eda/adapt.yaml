@@ -1,0 +1,27 @@
+# adapt options
+sampling_rate: 8000
+frame_size: 200
+frame_shift: 80
+model_type: Transformer
+max_epochs: 100
+gradclip: 5
+batchsize: 64
+hidden_size: 256
+num_frames: 500
+num_speakers: 2
+input_transform: logmel23_mn
+optimizer: adam
+lr: 1e-5
+context_size: 7
+subsampling: 10
+gradient_accumulation_steps: 1
+transformer_encoder_n_heads: 4
+transformer_encoder_n_layers: 4
+transformer_encoder_dropout: 0.1
+use_attractor: True
+shuffle: True
+attractor_loss_ratio: 0.01
+attractor_encoder_dropout: 0.1
+attractor_decoder_dropout: 0.1
+seed: 777
+gpu: 0

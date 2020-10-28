@@ -14,6 +14,9 @@ valid_set=data/simu/data/dev_clean_2_ns2_beta2_500
 # Base config files for {train,infer}.py
 train_config=conf/train.yaml
 infer_config=conf/infer.yaml
+# If you want to use EDA-EEND, uncommend two lines below.
+# train_config=conf/eda/train.yaml
+# infer_config=conf/eda/infer.yaml
 
 # Additional arguments passed to {train,infer}.py.
 # You need not edit the base config files above
