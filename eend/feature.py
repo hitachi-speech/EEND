@@ -14,6 +14,8 @@ def get_input_dim(
 ):
     if transform_type.startswith('logmel23'):
         frame_size = 23
+    elif transform_type.startswith('logmel'):
+        frame_size = 40
     else:
         fft_size = 1 << (frame_size - 1).bit_length()
         frame_size = int(fft_size / 2) + 1
