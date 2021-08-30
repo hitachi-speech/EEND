@@ -8,7 +8,6 @@ gradclip: 5
 batchsize: 64
 hidden_size: 256
 num_frames: 500
-num_speakers: 2
 input_transform: logmel23_mn
 optimizer: adam
 lr: 1e-5
